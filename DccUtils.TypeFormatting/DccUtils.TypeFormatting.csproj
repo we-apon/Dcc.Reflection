@@ -5,15 +5,13 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>10</LangVersion>
-        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Authors>Kirill Dubinkin</Authors>
         <PackageProjectUrl>https://github.com/we-apon/Dcc.Reflection</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/we-apon/Dcc.Reflection/blob/main/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/we-apon/Dcc.Reflection</RepositoryUrl>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <RootNamespace>Dcc.Reflection.TypeFormatting</RootNamespace>
+        <RepositoryType>git</RepositoryType>
     </PropertyGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Dcc.Reflection.TypeFormatting\Dcc.Reflection.TypeFormatting.csproj" />
-    </ItemGroup>
 
 </Project>
