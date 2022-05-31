@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace Dcc.Reflection.Extensions.TypeFormatter;
+namespace Dcc.Reflection.TypeFormatting;
 
 public abstract class TypeNameFormatter {
     public abstract string GetTypeName(Type type);
