@@ -12,6 +12,8 @@
         <RepositoryUrl>https://github.com/we-apon/Dcc.Reflection</RepositoryUrl>
         <RootNamespace>Dcc.Reflection.TypeResolver</RootNamespace>
         <RepositoryType>git</RepositoryType>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
     <ItemGroup>

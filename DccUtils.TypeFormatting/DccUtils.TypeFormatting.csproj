@@ -12,6 +12,8 @@
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <RootNamespace>Dcc.Reflection.TypeFormatting</RootNamespace>
         <RepositoryType>git</RepositoryType>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     </PropertyGroup>
 
 </Project>
