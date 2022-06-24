@@ -116,13 +116,43 @@ public class TypeResolver {
                 assembly = Assembly.Load(file);
             }
             catch (Exception e) {
+                Console.WriteLine(e.ToString());
                 //todo: add logging
                 continue;
             }
 
-            foreach (var type in assembly.ExportedTypes.Where(x => !x.IsAbstract && !x.IsGenericTypeParameter && !_globalOptions.TypeExclude(x))) {
-                yield return type;
+            IEnumerator<Type> exportedTypes;
+            try {
+                exportedTypes = assembly.ExportedTypes.GetEnumerator();
             }
+            catch (Exception e) {
+                Console.WriteLine(e);
+                continue;
+            }
+
+            do {
+                Type? type = null;
+                try {
+                    if (exportedTypes.MoveNext()) {
+                        type = exportedTypes.Current;
+                        if (type!.IsAbstract || type.IsGenericParameter || _globalOptions.TypeExclude(type))
+                            continue;
+                    }
+                }
+                catch (Exception e) {
+                    exportedTypes.Dispose();
+                    Console.WriteLine(e);
+                    break;
+                }
+
+                if (type == null)
+                    break;
+
+                yield return type;
+
+            } while (true);
+
+            exportedTypes.Dispose();
         }
     }
 
