@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+    <PropertyGroup>
+      <RootNamespace>Dcc.Reflection.TypeResolver</RootNamespace>
+    </PropertyGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\DccUtils.TypeFormatting\DccUtils.TypeFormatting.csproj" />
     </ItemGroup>
