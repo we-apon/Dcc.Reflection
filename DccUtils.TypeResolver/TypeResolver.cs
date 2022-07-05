@@ -50,7 +50,11 @@ public class TypeResolver {
 
         var parameters = new Type[hierarchy.Generics.Count];
         for (var i = 0; i < hierarchy.Generics.Count; i++) {
-            parameters[i] = GetType(hierarchy.Generics[i])!;
+            var parameterType = GetType(hierarchy.Generics[i]);
+            if (parameterType == null) {
+                return null;
+            }
+            parameters[i] = parameterType;
         }
 
         return type!.MakeGenericType(parameters);
