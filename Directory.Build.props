@@ -1,0 +1,24 @@
+<Project>
+
+    <PropertyGroup>
+        <PackageVersion>1.0.5</PackageVersion>
+        <AssemblyVersion>$(PackageVersion).0</AssemblyVersion>
+        <FileVersion>$(PackageVersion).0</FileVersion>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>10</LangVersion>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+        <Authors>Kirill Dubinkin</Authors>
+        <PackageProjectUrl>https://github.com/we-apon/Dcc.Reflection</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/we-apon/Dcc.Reflection/blob/main/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/we-apon/Dcc.Reflection</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <NoWarn>1701;1702</NoWarn>
+    </PropertyGroup>
+
+</Project>
