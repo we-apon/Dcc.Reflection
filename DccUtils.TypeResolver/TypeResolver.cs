@@ -78,7 +78,7 @@ public class TypeResolver {
 
     static readonly ConcurrentDictionary<string, Type> UserDefinedTypes = new();
 
-    static readonly Lazy<Dictionary<string, Type>> FormattedTypes = new(() => {
+        static readonly Lazy<Dictionary<string, Type>> FormattedTypes = new(() => {
         var mapping = CreateTypesMapping(GetTypesFromAssemblies());
         _isAlreadyMapped = true;
         return mapping;

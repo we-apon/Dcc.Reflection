@@ -1,9 +1,10 @@
 <Project>
 
     <PropertyGroup>
-        <PackageVersion>1.0.5</PackageVersion>
-        <AssemblyVersion>$(PackageVersion).0</AssemblyVersion>
-        <FileVersion>$(PackageVersion).0</FileVersion>
+        <Version>1.0.19</Version>
+        <PackageVersion>$(Version)</PackageVersion>
+        <AssemblyVersion>$(Version).0</AssemblyVersion>
+        <FileVersion>$(Version).0</FileVersion>
         <TargetFramework>netstandard2.1</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
