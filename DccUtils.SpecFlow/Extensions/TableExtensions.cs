@@ -1,8 +1,11 @@
 using System.Collections;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Dcc.Extensions;
 using FluentAssertions;
 using TechTalk.SpecFlow;
 using TechTalk.SpecFlow.Assist;
@@ -94,25 +97,88 @@ public static class TableExtensions {
     }
 
     static bool TryGetFromJson<TResult>(this Table table, JsonSerializerOptions? serializerOptions, out TResult? value) {
-        if (!table.ContainsSingleJsonValue()) {
-            value = default;
-            return false;
+        if (table.ContainsSingleJsonValue()) {
+            return TryDeserialize(table.Rows[0][0], serializerOptions, out value);
         }
 
-        try {
-            value = JsonSerializer.Deserialize<TResult>(table.Rows[0][0], serializerOptions ?? DefaultJsonSerializerOptions.Instance);
-            return true;
-        }
-        catch {
-            value = default;
-            return false;
+        value = default;
+        return false;
+
+        static bool TryDeserialize(string text, JsonSerializerOptions? serializerOptions, out TResult? value) {
+            try {
+                value = JsonSerializer.Deserialize<TResult>(text, serializerOptions ?? DefaultJsonSerializerOptions.Instance);
+                return true;
+            }
+            catch {
+                value = default;
+                return false;
+            }
         }
     }
+
 
     static bool IsNullOrEmpty(string? value) {
         return string.IsNullOrWhiteSpace(value) || value.Trim().Equals("null", StringComparison.InvariantCultureIgnoreCase);
     }
 
+
+    public static Table FixByteArrayAsHexOrBase64Strings(this Table table, Type targetType) {
+        var byteArrayProps = targetType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(x => x.PropertyType.IsAssignableFrom(typeof(byte[])))
+            .Select(x => x.Name)
+            .ToHashSet();
+
+        if (!byteArrayProps.Any())
+            return table;
+
+        if (table.ThisIsAVerticalTable(targetType)) {
+            var fixedTable = new Table(table.Header.ToArray());
+            foreach (var row in table.Rows) {
+                var name = row[0];
+                var value = row[1];
+                fixedTable.AddRow(name, ValueFor(name, value, byteArrayProps));
+            }
+
+            return fixedTable;
+        }
+        else {
+            var header = table.Header.ToArray();
+            var fixedTable = new Table(header);
+            foreach (var row in table.Rows) {
+                var cells = new string[header.Length];
+                for (var i = 0; i < header.Length; i++) {
+                    var name = header[i];
+                    var value = row[i];
+                    cells[i] = ValueFor(name, value, byteArrayProps);
+                }
+
+                fixedTable.AddRow(cells.ToArray());
+            }
+
+            return fixedTable;
+        }
+
+        static string ValueFor(string propName, string value, HashSet<string> byteArrayProps) {
+            return byteArrayProps.Contains(propName)
+                ? string.Join(", ", ByteArrayFrom(value))
+                : value;
+        }
+
+        static byte[] ByteArrayFrom(string value) {
+            if (value.IsHexString()) {
+                return Convert.FromHexString(value);
+            }
+
+            if (value.IsBase64String()) {
+                return Convert.FromBase64String(value);
+            }
+
+            var numbers = value.Split(",").Select(x => byte.TryParse(x.Trim(), out var num) ? (byte?)num : null).ToList();
+            return numbers.All(x => x != null)
+                ? numbers.Select(x => x!.Value).ToArray()
+                : Encoding.UTF8.GetBytes(value);
+        }
+    }
 
     public static object To(this Table table, Type type, JsonSerializerOptions? serializerOptions, Func<PropertyInfo, Type>? getInstancePropertyType = null, bool ignoreReadOnlyProps = false) {
         serializerOptions ??= DefaultJsonSerializerOptions.Instance;
@@ -155,6 +221,7 @@ public static class TableExtensions {
             table = newTable;
         }
 
+        table = table.FixByteArrayAsHexOrBase64Strings(typeof(TResult));
         var result = table.CreateInstance<TResult>();
 
         var nestedGroups = table.Rows
