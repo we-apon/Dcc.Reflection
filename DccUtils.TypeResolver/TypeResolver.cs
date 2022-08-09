@@ -104,12 +104,12 @@ public class TypeResolver {
                 continue;
             }
 
-            if (!mapping.TryAdd(unConflictedName1, conflictedType!) || _globalOptions.ThrowOnUnresolvedNameConflicts) {
+            if (!mapping.TryAdd(unConflictedName1, conflictedType!) && _globalOptions.ThrowOnUnresolvedNameConflicts) {
                 throw new InvalidOperationException($"Type {conflictedType!.FullName} and {type.FullName} formatted with same name, event after conflict name resolving!");
             }
 
             if (!mapping.TryAdd(unConflictedName2, type) && _globalOptions.ThrowOnUnresolvedNameConflicts) {
-                throw new InvalidOperationException($"Type {type!.FullName} and {type.FullName} formatted with same name, event after conflict name resolving!");
+                throw new InvalidOperationException($"Type {conflictedType!.FullName} and {type.FullName} formatted with same name, event after conflict name resolving!");
             }
         }
 
