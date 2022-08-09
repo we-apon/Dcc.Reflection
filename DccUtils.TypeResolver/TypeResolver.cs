@@ -139,7 +139,7 @@ public class TypeResolver {
                 try {
                     if (exportedTypes.MoveNext()) {
                         type = exportedTypes.Current;
-                        if (type!.IsAbstract || type.IsGenericParameter || _globalOptions.TypeExclude(type))
+                        if (type!.IsGenericParameter || _globalOptions.TypeExclude(type))
                             continue;
                     }
                 }
