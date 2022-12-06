@@ -22,8 +22,8 @@ public class TypeResolver {
         }
     }
 
-    public static void MapTypes(IEnumerable<Type> types) {
-        foreach (var mapping in CreateTypesMapping(types)) {
+    public static void MapTypes(IEnumerable<Type> types, TypeNameFormatter? formatter = null) {
+        foreach (var mapping in CreateTypesMapping(types, formatter ?? _globalOptions.TypeNameFormatter)) {
             UserDefinedTypes.TryAdd(mapping.Key, mapping.Value);
         }
     }
@@ -35,14 +35,20 @@ public class TypeResolver {
 
     public static Type? Resolve(ReadOnlySpan<char> formattedTypeName, IEnumerable<Type> additionalTypes) {
         var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(ref formattedTypeName);
-        var additionalMapping = CreateTypesMapping(additionalTypes);
+        var additionalMapping = CreateTypesMapping(additionalTypes, _globalOptions.TypeNameFormatter);
+        return GetType(hierarchy, additionalMapping, isFullName: true);
+    }
+
+    static readonly TypeNameFormatter _fullNameFormatter = new TypeFullNameFormatter();
+    public static Type? ResolveByFullName(ReadOnlySpan<char> formattedFullName, IDictionary<string, Type>? additionalMapping = null) {
+        var hierarchy = _fullNameFormatter.GetHierarchy(ref formattedFullName);
         return GetType(hierarchy, additionalMapping);
     }
 
-    static Type? GetType(TypeNameFormatter.TypeNameHierarchy hierarchy, IDictionary<string, Type>? additionalMapping = null) {
+    static Type? GetType(TypeNameFormatter.TypeNameHierarchy hierarchy, IDictionary<string, Type>? additionalMapping = null, bool isFullName = false) {
         var formattedName = _globalOptions.TypeNameFormatter.GetFormattedName(hierarchy);
 
-        var type = FindType(formattedName, additionalMapping);
+        var type = FindType(formattedName, additionalMapping, isFullName);
 
         if (!hierarchy.Generics.Any()) {
             return type!;
@@ -60,7 +66,7 @@ public class TypeResolver {
         return type!.MakeGenericType(parameters);
     }
 
-    static Type? FindType(string formattedName, IDictionary<string, Type>? additionalMapping) {
+    static Type? FindType(string formattedName, IDictionary<string, Type>? additionalMapping, bool isFullName = false) {
         if (additionalMapping?.TryGetValue(formattedName, out var type) == true) {
             return type;
         }
@@ -69,33 +75,39 @@ public class TypeResolver {
             return type;
         }
 
-        if (FormattedTypes.Value.TryGetValue(formattedName, out type)) {
-            return type;
-        }
+        var globalMapping = isFullName
+            ? FormattedFullNamedTypes.Value
+            : FormattedTypes.Value;
 
-        return null;
+        return globalMapping.TryGetValue(formattedName, out type) ? type : null;
     }
 
     static readonly ConcurrentDictionary<string, Type> UserDefinedTypes = new();
 
-        static readonly Lazy<Dictionary<string, Type>> FormattedTypes = new(() => {
-        var mapping = CreateTypesMapping(GetTypesFromAssemblies());
+    static readonly Lazy<Dictionary<string, Type>> FormattedTypes = new(() => {
+        var mapping = CreateTypesMapping(GetTypesFromAssemblies(), _globalOptions.TypeNameFormatter);
         _isAlreadyMapped = true;
         return mapping;
     }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    static Dictionary<string, Type> CreateTypesMapping(IEnumerable<Type> types) {
+    static readonly Lazy<Dictionary<string, Type>> FormattedFullNamedTypes = new(() => {
+        var mapping = CreateTypesMapping(GetTypesFromAssemblies(), new TypeFullNameFormatter());
+        _isAlreadyMapped = true;
+        return mapping;
+    }, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    static Dictionary<string, Type> CreateTypesMapping(IEnumerable<Type> types, TypeNameFormatter formatter) {
         var mapping = new Dictionary<string, Type>();
 
         foreach (var type in types) {
-            var name = type.GetNestedName(_globalOptions.TypeNameFormatter);
+            var name = type.GetNestedName(formatter);
             if (mapping.TryAdd(name, type)) {
                 continue;
             }
 
             mapping.Remove(name, out var conflictedType);
-            var unConflictedName1 = _globalOptions.TypeNameFormatter.GetUniqueTypeName(conflictedType!);
-            var unConflictedName2 = _globalOptions.TypeNameFormatter.GetUniqueTypeName(type);
+            var unConflictedName1 = formatter.GetUniqueTypeName(conflictedType!);
+            var unConflictedName2 = formatter.GetUniqueTypeName(type);
             if (unConflictedName1 == unConflictedName2) {
                 if (_globalOptions.ThrowOnUnresolvedNameConflicts) {
                     throw new InvalidOperationException($"Type {conflictedType!.FullName} and {type.FullName} formatted with same name, event after conflict name resolving!");
