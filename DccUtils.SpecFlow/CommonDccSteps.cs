@@ -1,17 +1,30 @@
 using System.Collections;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Dcc.Extensions;
+using Dcc.Reflection.TypeResolver;
 using FluentAssertions;
 using Microsoft.AspNetCore.WebUtilities;
 using TechTalk.SpecFlow;
 
 namespace Dcc.SpecFlow;
 
+#if NET7_0_OR_GREATER
+
+[Binding]
+public class CommonDccSteps : CommonDccSteps<TypeResolver> { }
+
+[Binding]
+public class CommonDccSteps<TTypeResolver> : ContextScenario<TTypeResolver> where TTypeResolver : ITypeResolver {
+
+#else
+
 [Binding]
 public class CommonDccSteps : ContextScenario {
+
+#endif
+
 
     [Given(@"для инициализации ""(.*)""\.""(.*)"" используется тип ""(.*)""")]
     public void UseSpecificTypeWhenInitializingPropertyFromTable(string targetTypeName, string propertyPath, string specificTypeForProperty) {

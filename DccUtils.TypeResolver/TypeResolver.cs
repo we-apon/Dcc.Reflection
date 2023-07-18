@@ -4,13 +4,17 @@ using Dcc.Reflection.TypeFormatting;
 
 namespace Dcc.Reflection.TypeResolver;
 
+#if NET7_0_OR_GREATER
+public class TypeResolver : ITypeResolver {
+#else
 public class TypeResolver {
+#endif
 
-    static TypeResolverOptions _globalOptions = new();
+    static ITypeResolverOptions _globalOptions = new TypeResolverOptions();
     static readonly object Lock = new();
     static volatile bool _isAlreadyMapped;
 
-    public static void Configure(Action<TypeResolverOptions> configure) {
+    public static void Configure(Action<ITypeResolverOptions> configure) {
         lock (Lock) {
             if (_isAlreadyMapped) {
                 throw new Exception($"{nameof(TypeResolver)} is already initialized. You should configure global options before resolving any types");
@@ -22,27 +26,67 @@ public class TypeResolver {
         }
     }
 
+    public static void Configure(Func<ITypeResolverOptions> getOptions, Action<ITypeResolverOptions> configure) {
+        lock (Lock) {
+            if (_isAlreadyMapped) {
+                throw new Exception($"{nameof(TypeResolver)} is already initialized. You should configure global options before resolving any types");
+            }
+
+            var options = getOptions();
+            configure.Invoke(options);
+            _globalOptions = options.Clone();
+        }
+    }
+
     public static void MapTypes(IEnumerable<Type> types, TypeNameFormatter? formatter = null) {
         foreach (var mapping in CreateTypesMapping(types, formatter ?? _globalOptions.TypeNameFormatter)) {
             UserDefinedTypes.TryAdd(mapping.Key, mapping.Value);
         }
     }
 
+    /// <summary>
+    /// Резолвит тип по имени
+    /// <para>Сперва производится попытка резолва по полному имени типа, затем - по короткому</para>
+    /// </summary>
+    /// <param name="formattedTypeName">
+    /// Отформатированное имя типа, например короткие имена - <![CDATA[SomeGenericType<GenericParam>]]> или <![CDATA[SomeNonGenericType]]>, или полные имена - <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
+    /// </param>
+    /// <param name="additionalMapping">Дополнительные, кустомные, маппинги названий типов к этим типам - используемые только в текущем вызове метода. Не влияют на глобальный маппинг типов <see cref="ITypeResolver"/></param>
+    /// <returns>Возвращает запрошенный тип, если он был найден</returns>
     public static Type? Resolve(ReadOnlySpan<char> formattedTypeName, IDictionary<string, Type>? additionalMapping = null) {
         var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(ref formattedTypeName);
-        return GetType(hierarchy, additionalMapping);
+        return GetType(hierarchy, additionalMapping, isFullName: true) ?? GetType(hierarchy, additionalMapping, isFullName: false);
     }
 
+    /// <summary>
+    /// Резолвит тип по имени
+    /// <para>Сперва производится попытка резолва по полному имени типа, затем - по короткому</para>
+    /// </summary>
+    /// <param name="formattedTypeName">
+    /// Отформатированное имя типа, например короткие имена - <![CDATA[SomeGenericType<GenericParam>]]> или <![CDATA[SomeNonGenericType]]>, или полные имена - <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
+    /// </param>
+    /// <param name="additionalTypes">Дополнительные, кустомные, типы, для которых будет сформирован маппинг названий, согласно глобальной конфигурации - и используемые только в текущем вызове метода. Не влияют на глобальный маппинг типов <see cref="ITypeResolver"/></param>
+    /// <returns>Возвращает запрошенный тип, если он был найден</returns>
     public static Type? Resolve(ReadOnlySpan<char> formattedTypeName, IEnumerable<Type> additionalTypes) {
         var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(ref formattedTypeName);
         var additionalMapping = CreateTypesMapping(additionalTypes, _globalOptions.TypeNameFormatter);
-        return GetType(hierarchy, additionalMapping, isFullName: true);
+        return GetType(hierarchy, additionalMapping, isFullName: true) ?? GetType(hierarchy, additionalMapping, isFullName: false);
     }
 
+
     static readonly TypeNameFormatter _fullNameFormatter = new TypeFullNameFormatter();
+
+    /// <summary>
+    /// Резолвит тип по полному, отформатированному, имени типа
+    /// </summary>
+    /// <param name="formattedFullName">
+    /// Отформатированное имя типа, например <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
+    /// </param>
+    /// <param name="additionalMapping">Дополнительные, кустомные, маппинги названий типов к этим типам - используемые только в текущем вызове метода. Не влияют на глобальный маппинг типов <see cref="ITypeResolver"/></param>
+    /// <returns>Возвращает запрошенный тип, если он был найден по полному имени</returns>
     public static Type? ResolveByFullName(ReadOnlySpan<char> formattedFullName, IDictionary<string, Type>? additionalMapping = null) {
         var hierarchy = _fullNameFormatter.GetHierarchy(ref formattedFullName);
-        return GetType(hierarchy, additionalMapping);
+        return GetType(hierarchy, additionalMapping, isFullName: true);
     }
 
     static Type? GetType(TypeNameFormatter.TypeNameHierarchy hierarchy, IDictionary<string, Type>? additionalMapping = null, bool isFullName = false) {

@@ -2,7 +2,7 @@ using Dcc.Reflection.TypeFormatting;
 
 namespace Dcc.Reflection.TypeResolver;
 
-public class TypeResolverOptions {
+public class TypeResolverOptions : ITypeResolverOptions {
     public TypeNameFormatter TypeNameFormatter { get; set; } = new TypeShortNameFormatter();
     public Func<string, bool> AssemblyExclude { get; set; } = name => name.Contains("EntityFrameworkCore") && name.Contains("Design");
     public Func<string, bool> AssemblyInclude { get; set; } = _ => false;
@@ -12,5 +12,5 @@ public class TypeResolverOptions {
 
     public IEnumerable<string> AdditionalAssemblies { get; set; } = ArraySegment<string>.Empty;
 
-    internal TypeResolverOptions Clone() => (TypeResolverOptions) MemberwiseClone();
+    public ITypeResolverOptions Clone() => (ITypeResolverOptions) MemberwiseClone();
 }
