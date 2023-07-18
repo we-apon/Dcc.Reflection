@@ -15,7 +15,6 @@ namespace Dcc.SpecFlow;
 [Binding]
 public class CommonDccSteps : CommonDccSteps<TypeResolver> { }
 
-[Binding]
 public class CommonDccSteps<TTypeResolver> : ContextScenario<TTypeResolver> where TTypeResolver : ITypeResolver {
 
 #else

@@ -11,7 +11,6 @@ namespace Dcc.SpecFlow.MassTransit;
 [Binding]
 public class CommonDccMassTransitSteps : CommonDccMassTransitSteps<TypeResolver> {  }
 
-[Binding]
 public class CommonDccMassTransitSteps<TTypeResolver> : ContextScenario<TTypeResolver> where TTypeResolver : ITypeResolver {
 
 #else

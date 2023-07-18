@@ -93,10 +93,8 @@ public class TypeResolver {
         var formattedName = _globalOptions.TypeNameFormatter.GetFormattedName(hierarchy);
 
         var type = FindType(formattedName, additionalMapping, isFullName);
-
-        if (!hierarchy.Generics.Any()) {
-            return type!;
-        }
+        if (type == null || !hierarchy.Generics.Any())
+            return type;
 
         var parameters = new Type[hierarchy.Generics.Count];
         for (var i = 0; i < hierarchy.Generics.Count; i++) {
