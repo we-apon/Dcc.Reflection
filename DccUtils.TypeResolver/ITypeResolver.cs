@@ -11,7 +11,7 @@ public interface ITypeResolver {
 
     /// <summary>
     /// Резолвит тип по имени
-    /// <para>Сперва производится попытка резолва по полному имени типа, затем - по короткому</para>
+    /// <para>Сперва производится попытка резолва по короткому имени типа, затем - по полному без дубликатов неймспейсов, затем - по полному</para>
     /// </summary>
     /// <param name="formattedTypeName">
     /// Отформатированное имя типа, например короткие имена - <![CDATA[SomeGenericType<GenericParam>]]> или <![CDATA[SomeNonGenericType]]>, или полные имена - <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
@@ -23,7 +23,7 @@ public interface ITypeResolver {
 
     /// <summary>
     /// Резолвит тип по имени
-    /// <para>Сперва производится попытка резолва по полному имени типа, затем - по короткому</para>
+    /// <para>Сперва производится попытка резолва по короткому имени типа, затем - по полному без дубликатов неймспейсов, затем - по полному</para>
     /// </summary>
     /// <param name="formattedTypeName">
     /// Отформатированное имя типа, например короткие имена - <![CDATA[SomeGenericType<GenericParam>]]> или <![CDATA[SomeNonGenericType]]>, или полные имена - <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
@@ -34,6 +34,7 @@ public interface ITypeResolver {
 
     /// <summary>
     /// Резолвит тип по полному, отформатированному, имени типа
+    /// <para>Сперва производится попытка резолва по полному имени без дубликатов неймспейсов, затем - по полному</para>
     /// </summary>
     /// <param name="formattedFullName">
     /// Отформатированное имя типа, например <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>

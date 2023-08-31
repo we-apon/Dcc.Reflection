@@ -38,6 +38,10 @@ public class TypeResolver {
         }
     }
 
+    public static void MapType(string name, Type type) {
+        UserDefinedTypes.TryAdd(name, type);
+    }
+
     public static void MapTypes(IEnumerable<Type> types, TypeNameFormatter? formatter = null) {
         foreach (var mapping in CreateTypesMapping(types, formatter ?? _globalOptions.TypeNameFormatter)) {
             UserDefinedTypes.TryAdd(mapping.Key, mapping.Value);
@@ -46,7 +50,7 @@ public class TypeResolver {
 
     /// <summary>
     /// Резолвит тип по имени
-    /// <para>Сперва производится попытка резолва по полному имени типа, затем - по короткому</para>
+    /// <para>Сперва производится попытка резолва по короткому имени типа, затем - по полному без дубликатов неймспейсов, затем - по полному</para>
     /// </summary>
     /// <param name="formattedTypeName">
     /// Отформатированное имя типа, например короткие имена - <![CDATA[SomeGenericType<GenericParam>]]> или <![CDATA[SomeNonGenericType]]>, или полные имена - <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
@@ -55,12 +59,12 @@ public class TypeResolver {
     /// <returns>Возвращает запрошенный тип, если он был найден</returns>
     public static Type? Resolve(ReadOnlySpan<char> formattedTypeName, IDictionary<string, Type>? additionalMapping = null) {
         var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(ref formattedTypeName);
-        return GetType(hierarchy, additionalMapping, isFullName: true) ?? GetType(hierarchy, additionalMapping, isFullName: false);
+        return GetType(hierarchy, additionalMapping, isFullName: false) ?? GetType(hierarchy, additionalMapping, isFullName: true);
     }
 
     /// <summary>
     /// Резолвит тип по имени
-    /// <para>Сперва производится попытка резолва по полному имени типа, затем - по короткому</para>
+    /// <para>Сперва производится попытка резолва по короткому имени типа, затем - по полному без дубликатов неймспейсов, затем - по полному</para>
     /// </summary>
     /// <param name="formattedTypeName">
     /// Отформатированное имя типа, например короткие имена - <![CDATA[SomeGenericType<GenericParam>]]> или <![CDATA[SomeNonGenericType]]>, или полные имена - <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
@@ -70,7 +74,7 @@ public class TypeResolver {
     public static Type? Resolve(ReadOnlySpan<char> formattedTypeName, IEnumerable<Type> additionalTypes) {
         var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(ref formattedTypeName);
         var additionalMapping = CreateTypesMapping(additionalTypes, _globalOptions.TypeNameFormatter);
-        return GetType(hierarchy, additionalMapping, isFullName: true) ?? GetType(hierarchy, additionalMapping, isFullName: false);
+        return GetType(hierarchy, additionalMapping, isFullName: false) ?? GetType(hierarchy, additionalMapping, isFullName: true);
     }
 
 
@@ -78,6 +82,7 @@ public class TypeResolver {
 
     /// <summary>
     /// Резолвит тип по полному, отформатированному, имени типа
+    /// <para>Сперва производится попытка резолва по полному имени без дубликатов неймспейсов, затем - по полному</para>
     /// </summary>
     /// <param name="formattedFullName">
     /// Отформатированное имя типа, например <![CDATA[Full.Name.Of.SomeGenericType<GenericParam>]]> или <![CDATA[Full.Name.Of.SomeNonGenericType]]>
@@ -98,14 +103,14 @@ public class TypeResolver {
 
         var parameters = new Type[hierarchy.Generics.Count];
         for (var i = 0; i < hierarchy.Generics.Count; i++) {
-            var parameterType = GetType(hierarchy.Generics[i]);
+            var parameterType = GetType(hierarchy.Generics[i], additionalMapping, isFullName) ?? GetType(hierarchy.Generics[i], additionalMapping, !isFullName);
             if (parameterType == null) {
                 return null;
             }
             parameters[i] = parameterType;
         }
 
-        return type!.MakeGenericType(parameters);
+        return type.MakeGenericType(parameters);
     }
 
     static Type? FindType(string formattedName, IDictionary<string, Type>? additionalMapping, bool isFullName = false) {
@@ -113,15 +118,19 @@ public class TypeResolver {
             return type;
         }
 
-        if (UserDefinedTypes.TryGetValue(formattedName, out type)) {
+        if (!UserDefinedTypes.IsEmpty && UserDefinedTypes.TryGetValue(formattedName, out type)) {
             return type;
         }
 
-        var globalMapping = isFullName
-            ? FormattedFullNamedTypes.Value
-            : FormattedTypes.Value;
+        if (!isFullName) {
+            return FormattedTypes.Value.TryGetValue(formattedName, out type) ? type : null;
+        }
 
-        return globalMapping.TryGetValue(formattedName, out type) ? type : null;
+        return FormattedFullNamedTypesWithotNamespaceDuplicates.Value.TryGetValue(formattedName, out type)
+            ? type
+            : FormattedFullNamedTypes.Value.TryGetValue(formattedName, out type)
+                ? type
+                : null;
     }
 
     static readonly ConcurrentDictionary<string, Type> UserDefinedTypes = new();
@@ -138,11 +147,17 @@ public class TypeResolver {
         return mapping;
     }, LazyThreadSafetyMode.ExecutionAndPublication);
 
-    static Dictionary<string, Type> CreateTypesMapping(IEnumerable<Type> types, TypeNameFormatter formatter) {
+    static readonly Lazy<Dictionary<string, Type>> FormattedFullNamedTypesWithotNamespaceDuplicates = new(() => {
+        var mapping = CreateTypesMapping(GetTypesFromAssemblies(), new TypeFullNameFormatter(), removeNamespaceDuplicates: true);
+        _isAlreadyMapped = true;
+        return mapping;
+    }, LazyThreadSafetyMode.ExecutionAndPublication);
+
+    static Dictionary<string, Type> CreateTypesMapping(IEnumerable<Type> types, TypeNameFormatter formatter, bool removeNamespaceDuplicates = false) {
         var mapping = new Dictionary<string, Type>();
 
         foreach (var type in types) {
-            var name = type.GetNestedName(formatter);
+            var name = type.GetNestedName(formatter, removeNamespaceDuplicates);
             if (mapping.TryAdd(name, type)) {
                 continue;
             }

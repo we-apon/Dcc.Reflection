@@ -1,4 +1,5 @@
 using System.Text;
+using LinkDotNet.StringBuilder;
 
 namespace Dcc.Reflection.TypeFormatting;
 
@@ -22,6 +23,41 @@ public abstract class TypeNameFormatter {
 
         builder.Append('>');
     }
+
+    public virtual void AppendGenericDefinitionArgs(ref ValueStringBuilder builder, Span<Type> genericArgumentTypes) {
+        builder.Append('<');
+
+        var enumerator = genericArgumentTypes.GetEnumerator();
+        enumerator.MoveNext();
+        enumerator.Current.InsertNestedName(ref builder, builder.Length, this);
+
+        while (enumerator.MoveNext()) {
+            builder.Append(',');
+            enumerator.Current.InsertNestedName(ref builder, builder.Length, this);
+        }
+
+        builder.Append('>');
+    }
+
+    public virtual int InsertGenericDefinitionArgs(ref ValueStringBuilder builder, int index, Span<Type> genericArgumentTypes) {
+        builder.Insert(index++, '<');
+
+        var enumerator = genericArgumentTypes.GetEnumerator();
+        enumerator.MoveNext();
+
+        index = enumerator.Current.InsertNestedName(ref builder, index, this);
+
+        while (enumerator.MoveNext()) {
+            builder.Insert(index++, ',');
+
+            index = enumerator.Current.InsertNestedName(ref builder, index, this);
+        }
+
+        builder.Insert(index++, '>');
+        return index;
+    }
+
+
 
     public class TypeNameHierarchy {
         public string Name { get; set; } = null!;

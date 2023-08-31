@@ -2,4 +2,7 @@
   <PropertyGroup>
     <RootNamespace>Dcc.Reflection.TypeFormatting</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="LinkDotNet.StringBuilder" Version="1.18.1" />
+  </ItemGroup>
 </Project>
