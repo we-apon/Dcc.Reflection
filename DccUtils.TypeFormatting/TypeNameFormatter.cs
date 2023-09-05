@@ -72,12 +72,6 @@ public abstract class TypeNameFormatter {
 
 
     public virtual TypeNameHierarchy GetHierarchy(ReadOnlySpan<char> span) {
-        // if (span.Length == 0 || span[^1] != '>') {
-        //     return new() {Name = span.ToString()};
-        // }
-
-
-
         var genericIndex = span.IndexOf('<');
         if (genericIndex < 0) {
             return new() {Name = span.ToString()};

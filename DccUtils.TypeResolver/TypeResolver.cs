@@ -146,7 +146,6 @@ public class TypeResolver : ITypeResolver {
             }
             catch (Exception e) {
                 Console.WriteLine(e);
-                throw;
             }
         }
 

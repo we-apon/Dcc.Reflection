@@ -131,7 +131,6 @@ public static class TypeFormattingExtensions {
                 }
                 catch (Exception e) {
                     Console.WriteLine(e);
-                    throw;
                 }
             }
 
