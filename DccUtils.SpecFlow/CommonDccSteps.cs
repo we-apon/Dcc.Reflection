@@ -10,20 +10,11 @@ using TechTalk.SpecFlow;
 
 namespace Dcc.SpecFlow;
 
-#if NET7_0_OR_GREATER
 
 [Binding]
 public class CommonDccSteps : CommonDccSteps<TypeResolver> { }
 
 public class CommonDccSteps<TTypeResolver> : ContextScenario<TTypeResolver> where TTypeResolver : ITypeResolver {
-
-#else
-
-[Binding]
-public class CommonDccSteps : ContextScenario {
-
-#endif
-
 
     [Given(@"для инициализации ""(.*)""\.""(.*)"" используется тип ""(.*)""")]
     public void UseSpecificTypeWhenInitializingPropertyFromTable(string targetTypeName, string propertyPath, string specificTypeForProperty) {

@@ -8,16 +8,11 @@ using TechTalk.SpecFlow;
 
 namespace Dcc.SpecFlow;
 
-#if NET7_0_OR_GREATER
 
 public abstract class ContextScenario : ContextScenario<TypeResolver> { }
 
 public abstract class ContextScenario<TTypeResolver> where TTypeResolver : ITypeResolver {
 
-#else
-
-public abstract class ContextScenario {
-#endif
 
     ScenarioContext _context = null!;
     JsonSerializerOptions? _serializerOptions;
@@ -90,11 +85,7 @@ public abstract class ContextScenario {
     }
 
     protected object Set(string typeName, Table table, string? name = null) {
-#if NET7_0_OR_GREATER
         var type = TTypeResolver.Resolve(typeName, KnownTypes());
-#else
-        var type = TypeResolver.Resolve(typeName, KnownTypes());
-#endif
 
         type.Should().NotBeNull($"Тип {typeName} должен быть зарегистрирован в перегрузке метода {nameof(KnownTypes)}, или глобально в используемом {nameof(TypeResolver)}, чтобы иметь возможность использовать {nameof(Set)}({nameof(typeName)}, {nameof(table)})");
 
@@ -114,22 +105,14 @@ public abstract class ContextScenario {
         : _context.Get<T>(name);
 
     protected object GetByTypeName(string typeName) {
-#if NET7_0_OR_GREATER
         var type = TTypeResolver.Resolve(typeName, KnownTypes());
-#else
-        var type = TypeResolver.Resolve(typeName, KnownTypes());
-#endif
         type.Should().NotBeNull($"Тип должен быть зарегистрирован в перегрузке метода {nameof(KnownTypes)}, или глобально в используемом {nameof(TypeResolver)}, чтобы иметь возможность использовать {nameof(GetByTypeName)}({nameof(typeName)})");
 
         return _context.Get<object>(type!.FullName);
     }
 
     protected object GetFromTable(string typeName, Table table) {
-#if NET7_0_OR_GREATER
         var type = TTypeResolver.Resolve(typeName, KnownTypes());
-#else
-        var type = TypeResolver.Resolve(typeName, KnownTypes());
-#endif
         type.Should().NotBeNull($"Тип должен быть зарегистрирован в перегрузке метода {nameof(KnownTypes)}, или глобально в используемом {nameof(TypeResolver)}, чтобы иметь возможность использовать {nameof(GetFromTable)}({nameof(typeName)}, {nameof(table)})");
 
         var typeMapper = Get<PropertyInstanceTypeMapper>();
@@ -137,11 +120,7 @@ public abstract class ContextScenario {
     }
 
     protected Type? GetTypeByName(string typeName) {
-#if NET7_0_OR_GREATER
         return TTypeResolver.Resolve(typeName, KnownTypes());
-#else
-        return TypeResolver.Resolve(typeName, KnownTypes());
-#endif
     }
 
     protected void ShouldBeAsTable(object value, Table table) {

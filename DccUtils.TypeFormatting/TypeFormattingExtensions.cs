@@ -52,7 +52,7 @@ public static class TypeFormattingExtensions {
 
     }
 
-    static void AppendTypeName(ref ValueStringBuilder builder, Type type, Span<Type> genericArgs, TypeNameFormatter formatter) {
+    static void AppendTypeName(ref ValueStringBuilder builder, Type type, Span<Type?> genericArgs, TypeNameFormatter formatter) {
         var name = formatter.GetTypeName(type);
         if (!type.IsGenericType) {
             builder.Append(name);
@@ -71,7 +71,7 @@ public static class TypeFormattingExtensions {
         }
     }
 
-    static int InsertTypeName(ref ValueStringBuilder builder, Type type, Span<Type> genericArgs, TypeNameFormatter formatter, int startIndex = 0) {
+    static int InsertTypeName(ref ValueStringBuilder builder, Type type, Span<Type?> genericArgs, TypeNameFormatter formatter, int startIndex = 0) {
         var name = formatter.GetTypeName(type);
         if (!type.IsGenericType) {
             builder.Insert(startIndex, name);
@@ -124,9 +124,15 @@ public static class TypeFormattingExtensions {
                 InsertTypeName(ref builder, type, genericArgsMap[type], formatter);
             }
 
-            if (removeRootNamespaceDuplicates) {
+            if (removeRootNamespaceDuplicates && type.Namespace != null) {
                 var space = builder.AsSpan()[..(type.Namespace!.Length + 1)];
-                builder.Replace(space, "", space.Length, builder.Length);
+                try {
+                    builder.Replace(space, "", space.Length, builder.Length - space.Length);
+                }
+                catch (Exception e) {
+                    Console.WriteLine(e);
+                    throw;
+                }
             }
 
             return builder.ToString();
@@ -180,8 +186,8 @@ public static class TypeFormattingExtensions {
         return total - declared;
     }
 
-    public static Dictionary<Type, ArraySegment<Type>> GetNestingGenericArgumentsMap(this Type type) {
-        var result = new Dictionary<Type, ArraySegment<Type>>();
+    public static Dictionary<Type, ArraySegment<Type?>> GetNestingGenericArgumentsMap(this Type type) {
+        var result = new Dictionary<Type, ArraySegment<Type?>>();
 
         foreach (var item in GetNestingGenericArguments(type)) {
             result.Add(item.Type, item.Generics);
@@ -190,20 +196,34 @@ public static class TypeFormattingExtensions {
         return result;
     }
 
-    public static IEnumerable<(Type Type, ArraySegment<Type> Generics)> GetNestingGenericArguments(this Type type) {
+    public static IEnumerable<(Type Type, ArraySegment<Type?> Generics)> GetNestingGenericArguments(this Type type) {
         var genericArgs = type.GenericTypeArguments;
         var usedArgs = 0;
 
         while (type != null) {
+            if (genericArgs.Length == 0) {
+                yield return (type, type.IsGenericTypeDefinition ? new(new Type[type.GetGenericArguments().Length]) : ArraySegment<Type?>.Empty);
+                type = type.DeclaringType;
+                continue;
+            }
+
             var count = GetActualGenericsCount(type);
-            if (count == 0) {
-                yield return (type, ArraySegment<Type>.Empty);
+            if (count <= 0) {
+                yield return (type, ArraySegment<Type?>.Empty);
                 type = type.DeclaringType;
                 continue;
             }
 
             var start = genericArgs.Length - usedArgs - count;
-            yield return (type, new(genericArgs, start, count));
+            (Type Type, ArraySegment<Type?> Generics) item;
+            try {
+                item = (type, new(genericArgs, start, count));
+            }
+            catch (Exception e) {
+                throw new InvalidOperationException($"Can't {nameof(GetNestingGenericArguments)} of Type {type.FullName}", e);
+            }
+
+            yield return item;
 
             usedArgs += count;
             type = type.DeclaringType;

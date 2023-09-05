@@ -8,12 +8,8 @@ using TechTalk.SpecFlow;
 
 namespace Dcc.SpecFlow.MassTransit;
 
-#if NET7_0_OR_GREATER
 public abstract class MassTransitScenario<TStartup> : MassTransitScenario<TStartup, TypeResolver> where TStartup : class { }
 public abstract class MassTransitScenario<TStartup, TTypeResolver> : ContextScenario<TTypeResolver> where TStartup : class where TTypeResolver : ITypeResolver {
-#else
-public abstract class MassTransitScenario<TStartup> : ContextScenario where TStartup : class {
-#endif
 
     protected virtual (HttpClient HttpClient, WebApplicationFactory<TStartup> Factory, ITestHarness Harness) DoSetup(ScenarioContext context, Action<IServiceCollection>? configureServices = null, Action<IBusRegistrationConfigurator>? configureMassTransit = null) {
         var factory = new WebApplicationFactory<TStartup>();

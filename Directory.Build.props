@@ -1,11 +1,11 @@
 <Project>
 
     <PropertyGroup>
-        <Version>1.0.32</Version>
+        <Version>1.0.34</Version>
         <PackageVersion>$(Version)</PackageVersion>
         <AssemblyVersion>$(Version).0</AssemblyVersion>
         <FileVersion>$(Version).0</FileVersion>
-        <TargetFrameworks>net6.0;net7.0</TargetFrameworks>
+        <TargetFramework>net7.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <LangVersion>11</LangVersion>

@@ -6,19 +6,11 @@ using TechTalk.SpecFlow;
 
 namespace Dcc.SpecFlow.MassTransit;
 
-#if NET7_0_OR_GREATER
 
 [Binding]
 public class CommonDccMassTransitSteps : CommonDccMassTransitSteps<TypeResolver> {  }
 
 public class CommonDccMassTransitSteps<TTypeResolver> : ContextScenario<TTypeResolver> where TTypeResolver : ITypeResolver {
-
-#else
-
-[Binding]
-public class CommonDccMassTransitSteps : ContextScenario {
-
-#endif
 
     [When(@"в шину поступает сообщение ""(.*)"", содержащее")]
     [Then(@"в шину поступает сообщение ""(.*)"", содержащее")]

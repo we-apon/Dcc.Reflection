@@ -4,11 +4,7 @@ using Dcc.Reflection.TypeFormatting;
 
 namespace Dcc.Reflection.TypeResolver;
 
-#if NET7_0_OR_GREATER
 public class TypeResolver : ITypeResolver {
-#else
-public class TypeResolver {
-#endif
 
     static ITypeResolverOptions _globalOptions = new TypeResolverOptions();
     static readonly object Lock = new();
@@ -48,6 +44,15 @@ public class TypeResolver {
         }
     }
 
+    public static Type? Resolve(string formattedTypeName, IDictionary<string, Type>? additionalMapping = null) {
+        var type = FindType(formattedTypeName, additionalMapping) ?? FindType(formattedTypeName, additionalMapping, isFullName: true);
+        if (type != null)
+            return type;
+
+        var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(formattedTypeName);
+        return GetType(hierarchy, additionalMapping, isFullName: false) ?? GetType(hierarchy, additionalMapping, isFullName: true);
+    }
+
     /// <summary>
     /// Резолвит тип по имени
     /// <para>Сперва производится попытка резолва по короткому имени типа, затем - по полному без дубликатов неймспейсов, затем - по полному</para>
@@ -58,8 +63,13 @@ public class TypeResolver {
     /// <param name="additionalMapping">Дополнительные, кустомные, маппинги названий типов к этим типам - используемые только в текущем вызове метода. Не влияют на глобальный маппинг типов <see cref="ITypeResolver"/></param>
     /// <returns>Возвращает запрошенный тип, если он был найден</returns>
     public static Type? Resolve(ReadOnlySpan<char> formattedTypeName, IDictionary<string, Type>? additionalMapping = null) {
-        var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(ref formattedTypeName);
-        return GetType(hierarchy, additionalMapping, isFullName: false) ?? GetType(hierarchy, additionalMapping, isFullName: true);
+        var text = formattedTypeName.Trim().ToString();
+        return Resolve(text, additionalMapping);
+    }
+
+    public static Type? Resolve(string formattedTypeName, IEnumerable<Type> additionalTypes) {
+        var additionalMapping = CreateTypesMapping(additionalTypes, _globalOptions.TypeNameFormatter);
+        return Resolve(formattedTypeName, additionalMapping);
     }
 
     /// <summary>
@@ -72,9 +82,17 @@ public class TypeResolver {
     /// <param name="additionalTypes">Дополнительные, кустомные, типы, для которых будет сформирован маппинг названий, согласно глобальной конфигурации - и используемые только в текущем вызове метода. Не влияют на глобальный маппинг типов <see cref="ITypeResolver"/></param>
     /// <returns>Возвращает запрошенный тип, если он был найден</returns>
     public static Type? Resolve(ReadOnlySpan<char> formattedTypeName, IEnumerable<Type> additionalTypes) {
-        var hierarchy = _globalOptions.TypeNameFormatter.GetHierarchy(ref formattedTypeName);
         var additionalMapping = CreateTypesMapping(additionalTypes, _globalOptions.TypeNameFormatter);
-        return GetType(hierarchy, additionalMapping, isFullName: false) ?? GetType(hierarchy, additionalMapping, isFullName: true);
+        return Resolve(formattedTypeName, additionalMapping);
+    }
+
+    public static Type? ResolveByFullName(string formattedFullName, IDictionary<string, Type>? additionalMapping = null) {
+        var type = FindType(formattedFullName, additionalMapping, isFullName: true);
+        if (type != null)
+            return type;
+
+        var hierarchy = _fullNameFormatter.GetHierarchy(formattedFullName);
+        return GetType(hierarchy, additionalMapping, isFullName: true);
     }
 
 
@@ -90,15 +108,15 @@ public class TypeResolver {
     /// <param name="additionalMapping">Дополнительные, кустомные, маппинги названий типов к этим типам - используемые только в текущем вызове метода. Не влияют на глобальный маппинг типов <see cref="ITypeResolver"/></param>
     /// <returns>Возвращает запрошенный тип, если он был найден по полному имени</returns>
     public static Type? ResolveByFullName(ReadOnlySpan<char> formattedFullName, IDictionary<string, Type>? additionalMapping = null) {
-        var hierarchy = _fullNameFormatter.GetHierarchy(ref formattedFullName);
-        return GetType(hierarchy, additionalMapping, isFullName: true);
+        var text = formattedFullName.Trim().ToString();
+        return ResolveByFullName(text, additionalMapping);
     }
 
     static Type? GetType(TypeNameFormatter.TypeNameHierarchy hierarchy, IDictionary<string, Type>? additionalMapping = null, bool isFullName = false) {
         var formattedName = _globalOptions.TypeNameFormatter.GetFormattedName(hierarchy);
 
         var type = FindType(formattedName, additionalMapping, isFullName);
-        if (type == null || !hierarchy.Generics.Any())
+        if (type == null || hierarchy.Generics.Count == 0 || hierarchy.Generics.All(x => string.IsNullOrWhiteSpace(x.Name)))
             return type;
 
         var parameters = new Type[hierarchy.Generics.Count];
@@ -110,7 +128,29 @@ public class TypeResolver {
             parameters[i] = parameterType;
         }
 
-        return type.MakeGenericType(parameters);
+        var genericType = type.MakeGenericType(parameters);
+        if (hierarchy.Nested == null)
+            return genericType;
+
+        var nestedName = $"{genericType.GetNestedName()}.{_globalOptions.TypeNameFormatter.GetFormattedName(hierarchy.Nested)}";
+
+        foreach (var nestedType in genericType.GetNestedTypes()) {
+            try {
+                var genericNested = nestedType.MakeGenericType(parameters);
+                var genericName = genericNested.GetNestedName();
+                UserDefinedTypes.TryAdd(genericName, genericNested);
+
+                if (genericName == nestedName) {
+                    return genericNested;
+                }
+            }
+            catch (Exception e) {
+                Console.WriteLine(e);
+                throw;
+            }
+        }
+
+        return null;
     }
 
     static Type? FindType(string formattedName, IDictionary<string, Type>? additionalMapping, bool isFullName = false) {
@@ -157,12 +197,25 @@ public class TypeResolver {
         var mapping = new Dictionary<string, Type>();
 
         foreach (var type in types) {
-            var name = type.GetNestedName(formatter, removeNamespaceDuplicates);
+            string name;
+            try {
+                name = type.GetNestedName(formatter, removeNamespaceDuplicates);
+            }
+            catch (Exception e) {
+                throw new InvalidOperationException($"Can't GetNestedName of Type {type.FullName}", e);
+            }
+
             if (mapping.TryAdd(name, type)) {
                 continue;
             }
 
-            mapping.Remove(name, out var conflictedType);
+            if (mapping.Remove(name, out var conflictedType)) {
+                if (type == conflictedType) {
+                    mapping.TryAdd(name, type);
+                    continue;
+                }
+            }
+
             var unConflictedName1 = formatter.GetUniqueTypeName(conflictedType!);
             var unConflictedName2 = formatter.GetUniqueTypeName(type);
             if (unConflictedName1 == unConflictedName2) {
@@ -187,6 +240,32 @@ public class TypeResolver {
 
     static IEnumerable<Type> GetTypesFromAssemblies() {
         var assemblies = GetAssemblyNames();
+
+        yield return typeof(string);
+        yield return typeof(int);
+        yield return typeof(int?);
+        yield return typeof(long);
+        yield return typeof(long?);
+        yield return typeof(Int128);
+        yield return typeof(Int128?);
+        yield return typeof(UInt128);
+        yield return typeof(UInt128?);
+        yield return typeof(uint);
+        yield return typeof(uint?);
+        yield return typeof(ulong);
+        yield return typeof(ulong?);
+        yield return typeof(short);
+        yield return typeof(short?);
+        yield return typeof(ushort);
+        yield return typeof(ushort?);
+        yield return typeof(decimal);
+        yield return typeof(decimal?);
+        yield return typeof(byte);
+        yield return typeof(byte?);
+        yield return typeof(char);
+        yield return typeof(char?);
+        yield return typeof(bool);
+        yield return typeof(bool?);
 
         foreach (var file in assemblies) {
             Assembly assembly;

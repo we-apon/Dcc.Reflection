@@ -18,7 +18,7 @@ echo $key
 
 rm -rf artifacts
 
-dotnet build -o artifacts -p:Version=$ver
+dotnet build -c Release -o artifacts -p:Version=$ver
 dotnet nuget push artifacts/*$ver.nupkg -k $key -s https://api.nuget.org/v3/index.json --skip-duplicate
 # dotnet nuget push artifacts/*$ver.snupkg -k $key -s https://api.nuget.org/v3/index.json --skip-duplicate
 
