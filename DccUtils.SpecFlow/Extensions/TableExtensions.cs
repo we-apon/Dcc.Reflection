@@ -271,6 +271,68 @@ public static class TableExtensions {
             }
 
             var propType = getInstancePropertyType(property);
+
+            var constructors = propType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var ctor = constructors
+                .FirstOrDefault(x => {
+                    var parameters = x.GetParameters();
+                    if (parameters.Length == 0)
+                        return false;
+
+                    var param = parameters[0];
+                    if (param.ParameterType == typeof(string))
+                        return parameters.Length == 1 || parameters.Skip(1).All(p => p.IsOptional);
+
+                    return false;
+                });
+
+            if (ctor != null) {
+                var args = new object[ctor.GetParameters().Length];
+                args[0] = row[1];
+                resultedValue = ctor.Invoke(args);
+                property.SetValue(result, resultedValue);
+                continue;
+            }
+
+            ctor = constructors
+                .FirstOrDefault(x => {
+                    var parameters = x.GetParameters();
+                    if (parameters.Length == 0)
+                        return false;
+
+                    var param = parameters[0];
+
+                    try {
+                        var parsable = typeof(IParsable<>).MakeGenericType(param.ParameterType);
+                        if (param.ParameterType.IsAssignableTo(parsable))
+                            return parameters.Length == 1 || parameters.Skip(1).All(p => p.IsOptional);
+                    }
+                    catch {
+                        // ignored
+                    }
+
+                    return false;
+                });
+
+            if (ctor != null) {
+                // var parsable = typeof(IParsable<>).MakeGenericType(ctor.GetParameters()[0].ParameterType);
+
+                var parse = ctor.GetParameters()[0].ParameterType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .FirstOrDefault(x => x.Name == "Parse" && x.GetParameters().Length == 2 && x.GetParameters()[0].ParameterType == typeof(string));
+
+                if (parse != null) {
+                    var parsedValue = parse.Invoke(null, new object?[] {row[1], null});
+
+                    var args = new object[ctor.GetParameters().Length];
+                    args[0] = parsedValue;
+                    resultedValue = ctor.Invoke(args);
+                    property.SetValue(result, resultedValue);
+                    continue;
+                }
+            }
+
+
+
             var castOperator = propType
                 .GetMethods(BindingFlags.Public | BindingFlags.Static)
                 .Where(x => (x.Name == "op_Implicit" || x.Name == "op_Explicit"))

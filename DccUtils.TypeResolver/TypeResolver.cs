@@ -132,12 +132,12 @@ public class TypeResolver : ITypeResolver {
         if (hierarchy.Nested == null)
             return genericType;
 
-        var nestedName = $"{genericType.GetNestedName()}.{_globalOptions.TypeNameFormatter.GetFormattedName(hierarchy.Nested)}";
+        var nestedName = $"{genericType.GetNestedName(dontCache: true)}.{_globalOptions.TypeNameFormatter.GetFormattedName(hierarchy.Nested)}";
 
         foreach (var nestedType in genericType.GetNestedTypes()) {
             try {
                 var genericNested = nestedType.MakeGenericType(parameters);
-                var genericName = genericNested.GetNestedName();
+                var genericName = genericNested.GetNestedName(dontCache: true);
                 UserDefinedTypes.TryAdd(genericName, genericNested);
 
                 if (genericName == nestedName) {

@@ -5,6 +5,7 @@ using Dcc.Reflection.TypeResolver;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using TechTalk.SpecFlow;
+using TechTalk.SpecFlow.Infrastructure;
 
 namespace Dcc.SpecFlow;
 
@@ -12,11 +13,12 @@ namespace Dcc.SpecFlow;
 public abstract class ContextScenario : ContextScenario<TypeResolver> { }
 
 public abstract class ContextScenario<TTypeResolver> where TTypeResolver : ITypeResolver {
-
-
-    ScenarioContext _context = null!;
     JsonSerializerOptions? _serializerOptions;
     readonly object _lock = new();
+
+
+    protected ScenarioContext Context { get; private set; }
+    protected ISpecFlowOutputHelper Output { get; private set; }
 
     protected virtual TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(5);
 
@@ -33,9 +35,10 @@ public abstract class ContextScenario<TTypeResolver> where TTypeResolver : IType
     }
 
     [BeforeScenario]
-    public void ContextScenarioSetup(ScenarioContext context) {
-        _context = context;
-        _context.TryAdd(typeof(PropertyInstanceTypeMapper).FullName, new PropertyInstanceTypeMapper());
+    public void ContextScenarioSetup(ScenarioContext context, ISpecFlowOutputHelper outputHelper) {
+        Context = context;
+        Context.TryAdd(typeof(PropertyInstanceTypeMapper).FullName, new PropertyInstanceTypeMapper());
+        Output = outputHelper;
     }
 
     [BeforeStep]
@@ -64,10 +67,10 @@ public abstract class ContextScenario<TTypeResolver> where TTypeResolver : IType
 
     protected T Set<T>(T value, string? name = null) {
         if (string.IsNullOrWhiteSpace(name)) {
-            _context.Set(value);
+            Context.Set(value);
         }
         else {
-            _context.Add(name, value);
+            Context.Add(name, value);
         }
 
         return value;
@@ -75,13 +78,24 @@ public abstract class ContextScenario<TTypeResolver> where TTypeResolver : IType
 
     protected object Set(object value, string? name = null) {
         if (string.IsNullOrWhiteSpace(name)) {
-            _context.Add(value.GetType().FullName!, value);
+            foreach (var typeName in GetTypeNames(value)) {
+                Context.TryAdd(typeName, value);
+            }
         }
         else {
-            _context.Add(name, value);
+            Context.Add(name, value);
         }
 
         return value;
+    }
+
+    static IEnumerable<string> GetTypeNames(object value) {
+        var type = value.GetType();
+
+        yield return type.GetNestedName();
+        yield return type.GetNestedFullName();
+        yield return type.GetNestedFullNameWithoutNamespaceDuplicates();
+        yield return type.FullName!;
     }
 
     protected object Set(string typeName, Table table, string? name = null) {
@@ -95,20 +109,38 @@ public abstract class ContextScenario<TTypeResolver> where TTypeResolver : IType
         return value;
     }
 
-    protected bool Has<T>() => _context.ContainsKey(typeof(T).FullName!);
-    protected bool Has(string name) => _context.ContainsKey(name);
-    protected bool TryGet<T>(out T? value) => _context.TryGetValue(out value);
-    protected bool TryGet<T>(string name, out T? value) => _context.TryGetValue(name, out value);
+    protected bool Has<T>() => Context.ContainsKey(typeof(T).FullName!);
+    protected bool Has(string name) => Context.ContainsKey(name);
+    protected bool TryGet<T>(out T? value) => Context.TryGetValue(out value);
+    protected bool TryGet<T>(string name, out T? value) => Context.TryGetValue(name, out value);
 
-    protected T Get<T>(string? name = null) => string.IsNullOrWhiteSpace(name)
-        ? _context.Get<T>()
-        : _context.Get<T>(name);
+    protected T Get<T>(string? name = null) {
+        var value = string.IsNullOrWhiteSpace(name)
+            ? Context.Get<T>()
+            : Context.Get<T>(name);
+
+        if (value != null || name != null) {
+            return value;
+        }
+
+        var provider = Context.Get<IServiceProvider>();
+        if (provider != null) {
+            value = provider.GetService<T>();
+        }
+
+        return value!;
+    }
+
 
     protected object GetByTypeName(string typeName) {
         var type = TTypeResolver.Resolve(typeName, KnownTypes());
         type.Should().NotBeNull($"Тип должен быть зарегистрирован в перегрузке метода {nameof(KnownTypes)}, или глобально в используемом {nameof(TypeResolver)}, чтобы иметь возможность использовать {nameof(GetByTypeName)}({nameof(typeName)})");
 
-        return _context.Get<object>(type!.FullName);
+        if (Context.TryGetValue(type!.FullName!, out var value)) {
+            return value;
+        }
+
+        return value ?? Context.Get<IServiceProvider>()?.GetService(type)!;
     }
 
     protected object GetFromTable(string typeName, Table table) {

@@ -1,56 +1,59 @@
+using System.Buffers;
+using System.Collections.Concurrent;
 using System.Text;
+using CommunityToolkit.HighPerformance.Buffers;
 using LinkDotNet.StringBuilder;
 
 namespace Dcc.Reflection.TypeFormatting;
 
 public static class TypeFormattingExtensions {
 
-    public static string FormatTypeName(this Type type, TypeNameFormatter formatter) {
-        return type.FormatTypeName(formatter.GetTypeName, formatter.FormatGenericDefinitionArgs, formatter.GetNestedNameSplitter());
-    }
+    // public static string FormatTypeName(this Type type, TypeNameFormatter formatter) {
+    //     return type.FormatTypeName(formatter.GetTypeName, formatter.FormatGenericDefinitionArgs, formatter.GetNestedNameSplitter());
+    // }
 
-    public static string FormatTypeName(this Type type, Func<Type, string> nameSelector, Action<StringBuilder, IEnumerable<string?>>? genericFormatter = null, char nestedNameSplitter = '.') {
-        var name = nameSelector(type);
-        if (!type.IsGenericType) {
-            return name;
-        }
+    // public static string FormatTypeName(this Type type, Func<Type, string> nameSelector, Action<StringBuilder, IEnumerable<string?>>? genericFormatter = null, char nestedNameSplitter = '.') {
+    //     var name = nameSelector(type);
+    //     if (!type.IsGenericType) {
+    //         return name;
+    //     }
+    //
+    //     var index = name.IndexOf('`');
+    //     if (index < 0) {
+    //         return name;
+    //     }
+    //
+    //     var builder = new StringBuilder(name.Substring(0, index));
+    //     genericFormatter ??= PrettyFormatGeneric;
+    //     var args = type.GetGenericArguments();
+    //     if (args.Length > 0) {
+    //         genericFormatter.Invoke(builder, args.Select(x => x.IsGenericParameter ? null : GetNestedName(x, nameSelector, genericFormatter, nestedNameSplitter)));
+    //     }
+    //
+    //
+    //     return builder.ToString();
+    // }
 
-        var index = name.IndexOf('`');
-        if (index < 0) {
-            return name;
-        }
-
-        var builder = new StringBuilder(name.Substring(0, index));
-        genericFormatter ??= PrettyFormatGeneric;
-        var args = type.GetGenericArguments();
-        if (args.Length > 0) {
-            genericFormatter.Invoke(builder, args.Select(x => x.IsGenericParameter ? null : GetNestedName(x, nameSelector, genericFormatter, nestedNameSplitter)));
-        }
-
-
-        return builder.ToString();
-    }
-
-    public static string FormatTypeName(this Type type, Func<Type, string> nameSelector, Span<Type> genericArgs, Action<StringBuilder, IEnumerable<string?>>? genericFormatter = null, char nestedNameSplitter = '.') {
-        var name = nameSelector(type);
-        if (!type.IsGenericType) {
-            return name;
-        }
-
-        var index = name.IndexOf('`');
-        if (index < 0) {
-            return name;
-        }
-
-        var builder = new StringBuilder(name.Substring(0, index));
-        genericFormatter ??= PrettyFormatGeneric;
-        if (genericArgs.Length > 0) {
-            genericFormatter.Invoke(builder, GetNestedNames(genericArgs, genericArg => GetNestedName(genericArg, nameSelector, genericFormatter, nestedNameSplitter)));
-        }
-
-        return builder.ToString();
-
-    }
+    // public static string FormatTypeName(this Type type, Func<Type, string> nameSelector, Span<Type> genericArgs, Action<StringBuilder, IEnumerable<string?>>? genericFormatter = null, char nestedNameSplitter = '.') {
+    //     var name = nameSelector(type);
+    //     if (!type.IsGenericType) {
+    //         return name;
+    //     }
+    //
+    //     var index = name.IndexOf('`');
+    //     if (index < 0) {
+    //         return name;
+    //     }
+    //
+    //     var builder = new StringBuilder(name.Substring(0, index));
+    //     genericFormatter ??= PrettyFormatGeneric;
+    //     if (genericArgs.Length > 0) {
+    //         genericFormatter.Invoke(builder, GetNestedNames(genericArgs, genericArg => GetNestedName(genericArg, nameSelector, genericFormatter, nestedNameSplitter)));
+    //     }
+    //
+    //     return builder.ToString();
+    //
+    // }
 
     static void AppendTypeName(ref ValueStringBuilder builder, Type type, Span<Type?> genericArgs, TypeNameFormatter formatter) {
         var name = formatter.GetTypeName(type);
@@ -158,18 +161,18 @@ public static class TypeFormattingExtensions {
         return position;
     }
 
-    public static string GetNestedName(this Type type, Func<Type, string> nameSelector, Action<StringBuilder, IEnumerable<string?>>? genericFormatter = null, char nestedNameSplitter = '.') {
-        var genericArgsMap = type.GetNestingGenericArgumentsMap();
-
-        var builder = new StringBuilder(FormatTypeName(type, nameSelector, genericArgsMap[type], genericFormatter, nestedNameSplitter));
-
-        while (type is {DeclaringType: { }, IsGenericTypeParameter: false}) {
-            type = type.DeclaringType;
-            builder.Insert(0, nestedNameSplitter).Insert(0, FormatTypeName(type, nameSelector, genericArgsMap[type], genericFormatter, nestedNameSplitter));
-        }
-
-        return builder.ToString();
-    }
+    // public static string GetNestedName(this Type type, Func<Type, string> nameSelector, Action<StringBuilder, IEnumerable<string?>>? genericFormatter = null, char nestedNameSplitter = '.') {
+    //     var genericArgsMap = type.GetNestingGenericArgumentsMap();
+    //
+    //     var builder = new StringBuilder(FormatTypeName(type, nameSelector, genericArgsMap[type], genericFormatter, nestedNameSplitter));
+    //
+    //     while (type is {DeclaringType: { }, IsGenericTypeParameter: false}) {
+    //         type = type.DeclaringType;
+    //         builder.Insert(0, nestedNameSplitter).Insert(0, FormatTypeName(type, nameSelector, genericArgsMap[type], genericFormatter, nestedNameSplitter));
+    //     }
+    //
+    //     return builder.ToString();
+    // }
 
     static int GetGenericStartPosition(Type? type, int start = 0) {
         while ((type = type?.DeclaringType) != null) {
@@ -229,32 +232,88 @@ public static class TypeFormattingExtensions {
         }
     }
 
-    static readonly Func<Type, string> NameSelector = type => type.Name;
-    static readonly Func<Type, string> FullNameSelector = type => type.FullName!;
+    // static readonly Func<Type, string> NameSelector = type => type.Name;
+    // static readonly Func<Type, string> FullNameSelector = type => type.FullName!;
 
     static readonly TypeNameFormatter ShortNameFormatter = new TypeShortNameFormatter();
     static readonly TypeNameFormatter FullNameFormatter = new TypeFullNameFormatter();
-    static readonly Action<StringBuilder, IEnumerable<string?>> PrettyFormatGeneric = ShortNameFormatter.FormatGenericDefinitionArgs;
+    // static readonly Action<StringBuilder, IEnumerable<string?>> PrettyFormatGeneric = ShortNameFormatter.FormatGenericDefinitionArgs;
+
+    static readonly ConcurrentDictionary<Type, string> _names = new();
+    static readonly ConcurrentDictionary<Type, string> _fullNames = new();
+    static readonly ConcurrentDictionary<Type, string> _fullNamesWithoutNamespaceDuplicates = new();
+
+    //todo: try using WeakReference
+    //todo: try using modified StringPool from CommunityToolkit
 
 
-    public static string GetNestedName(this Type type, Action<StringBuilder, IEnumerable<string?>>? genericFormatter, char nestedNameSplitter = '.') {
-        return GetNestedName(type, ShortNameFormatter.GetTypeName, genericFormatter, nestedNameSplitter);
-    }
+    // public static string GetNestedName(this Type type, Action<StringBuilder, IEnumerable<string?>>? genericFormatter, char nestedNameSplitter = '.') {
+    //     return GetNestedName(type, ShortNameFormatter.GetTypeName, genericFormatter, nestedNameSplitter);
+    // }
 
     public static string GetNestedName(this Type type) {
-        return GetNestedName(type, ShortNameFormatter);
+        return _names.GetOrAdd(
+            type,
+            static (key, formatter) => key.GetNestedName(formatter),
+            ShortNameFormatter
+        );
     }
 
-    public static string GetNestedFullName(this Type type, Action<StringBuilder, IEnumerable<string?>>? genericFormatter, char nestedNameSplitter = '.') {
-        return GetNestedName(type, FullNameFormatter.GetTypeName, genericFormatter, nestedNameSplitter);
+    public static string GetNestedName(this Type type, bool dontCache) {
+        return _names.TryGetValue(type, out var name)
+            ? name
+            : dontCache
+                ? GetNestedName(type, ShortNameFormatter)
+                : GetNestedName(type);
     }
+
+    // public static string GetNestedFullName(this Type type, Action<StringBuilder, IEnumerable<string?>>? genericFormatter, char nestedNameSplitter = '.') {
+    //     return GetNestedName(type, FullNameFormatter.GetTypeName, genericFormatter, nestedNameSplitter);
+    // }
 
     public static string GetNestedFullName(this Type type) {
-        return GetNestedName(type, FullNameFormatter);
+        return _fullNames.GetOrAdd(
+            type,
+            static (key, formatter) => key.GetNestedName(formatter),
+            FullNameFormatter
+        );
+    }
+
+    public static string GetNestedFullName(this Type type, bool dontCache) {
+        return _fullNames.TryGetValue(type, out var name)
+            ? name
+            : dontCache
+                ? GetNestedName(type, FullNameFormatter)
+                : GetNestedFullName(type);
     }
 
     public static string GetNestedFullNameWithoutNamespaceDuplicates(this Type type) {
-        return GetNestedName(type, FullNameFormatter, removeRootNamespaceDuplicates: true);
+        return _fullNamesWithoutNamespaceDuplicates.GetOrAdd(
+            type,
+            static (key, formatter) => key.GetNestedName(formatter, removeRootNamespaceDuplicates: true),
+            FullNameFormatter
+        );
     }
 
+    public static string GetNestedFullNameWithoutNamespaceDuplicates(this Type type, bool dontCache) {
+        return _fullNamesWithoutNamespaceDuplicates.TryGetValue(type, out var name)
+            ? name
+            : dontCache
+                ? GetNestedName(type, FullNameFormatter, removeRootNamespaceDuplicates: true)
+                : GetNestedFullNameWithoutNamespaceDuplicates(type);
+    }
+
+    static readonly Type _objectType = typeof(object);
+
+    public static string GetTypeNestedName<T>(this T value) => typeof(T) == _objectType
+        ? value!.GetType().GetNestedName()
+        : TypeNameHolder<T>.NestedName;
+
+    public static string GetTypeNestedFullName<T>(this T value) => typeof(T) == _objectType
+        ? value!.GetType().GetNestedFullName()
+        : TypeNameHolder<T>.NestedFullName;
+
+    public static string GetTypeNestedFullNameWithoutNamespaceDuplicates<T>(this T value) => typeof(T) == _objectType
+        ? value!.GetType().GetNestedFullNameWithoutNamespaceDuplicates()
+        : TypeNameHolder<T>.NestedFullNameWithoutNamespaceDuplicates;
 }

@@ -18,6 +18,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DccUtils.Extensions", "DccU
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DccUtils.SpecFlow.MassTransit", "DccUtils.SpecFlow.MassTransit\DccUtils.SpecFlow.MassTransit.csproj", "{A6E45066-CEBE-4068-9C2E-77F8E9357694}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DccUtils.Specflow.Steps.En", "DccUtils.Specflow.Steps.En\DccUtils.Specflow.Steps.En.csproj", "{84A6952D-A6BA-45B1-BB44-FB864474A2EF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,5 +46,9 @@ Global
 		{A6E45066-CEBE-4068-9C2E-77F8E9357694}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A6E45066-CEBE-4068-9C2E-77F8E9357694}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A6E45066-CEBE-4068-9C2E-77F8E9357694}.Release|Any CPU.Build.0 = Release|Any CPU
+		{84A6952D-A6BA-45B1-BB44-FB864474A2EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84A6952D-A6BA-45B1-BB44-FB864474A2EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84A6952D-A6BA-45B1-BB44-FB864474A2EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84A6952D-A6BA-45B1-BB44-FB864474A2EF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

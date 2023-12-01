@@ -11,4 +11,11 @@ public static class ScenarioContextExtensions {
         context.Set(value);
         return value;
     }
+
+    public static bool PrintResponses(this ScenarioContext context)
+        => context.ScenarioInfo.ScenarioAndFeatureTags.Contains("PrintResponses");
+
+    public static bool AttachResponses(this ScenarioContext context)
+        => context.ScenarioInfo.ScenarioAndFeatureTags.Contains("AttachResponses");
+
 }

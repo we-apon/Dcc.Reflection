@@ -1,21 +1,25 @@
-/*
 using System.Collections;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Dcc.Extensions;
+using Dcc.Reflection.TypeFormatting;
 using Dcc.Reflection.TypeResolver;
 using FluentAssertions;
+using MediatR;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using TechTalk.SpecFlow;
 
 namespace Dcc.SpecFlow;
 
-
 [Binding]
-public class CommonDccSteps : ContextScenario<TypeResolver> {
+public class CommonDccSpecflowStepsEn : ContextScenario<TypeResolver> {
 
-    [Given(@"для инициализации ""(.*)""\.""(.*)"" используется тип ""(.*)""")]
+    // [Given(@"для инициализации ""(.*)""\.""(.*)"" используется тип ""(.*)""")]
     public void UseSpecificTypeWhenInitializingPropertyFromTable(string targetTypeName, string propertyPath, string specificTypeForProperty) {
         var target = GetTypeByName(targetTypeName);
         target.Should().NotBeNull();
@@ -34,19 +38,25 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         mapper.Map(property, specificType!);
     }
 
-    [Given(@"""(.*)"" contains")]
-    [Given(@"""(.*)"" содержит", Culture = "ru")]
-    public void GivenContains(string typeName, Table table) => Set(typeName, table);
-
-    [When(@"MediatR request ""(.*)"" is sent", Culture = "en")]
-    [When(@"выполняется MediatR-запрос ""(.*)""", Culture = "ru")]
-    public void WhenMediatRRequestIsSent(string p0)
-    {
-        ScenarioContext.StepIsPending();
+    [Given(@"""(.*)""")]
+    // [Given(@"""(.*)"" содержит", Culture = "ru")]
+    public void GivenContains(string typeName, Table table) {
+        Set(typeName, table);
     }
 
+    [When(@"""(.*)"" MediatR request is sent")]
+    // [When(@"выполняется MediatR-запрос ""(.*)""", Culture = "ru")]
+    public async Task WhenMediatRRequestIsSent(string typeName) {
+        var request = GetByTypeName(typeName);
+        var mediator = Get<IMediator>();
 
-    [Then(@"""(.*)""\.""(.*)"" имеет тип ""(.*)""")]
+        var response = await mediator.Send(request);
+        response.Should().NotBeNull();
+
+        Set(response!);
+    }
+
+    // [Then(@"""(.*)""\.""(.*)"" имеет тип ""(.*)""")]
     public void HasType(string targetTypeName, string propertyPath, string propertyValueTypeName) {
         var target = GetByTypeName(targetTypeName);
         var property = target.GetPropertyPath(propertyPath).Last();
@@ -59,7 +69,7 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         value.Should().BeOfType(expectedType);
     }
 
-    [Then(@"""(.*)""\.""(.*)"" содержит")]
+    // [Then(@"""(.*)""\.""(.*)"" содержит")]
     public void ThenСодержит(string targetTypeName, string propertyPath, Table table) {
         var target = GetByTypeName(targetTypeName);
         var property = target.GetPropertyPath(propertyPath).Last();
@@ -84,7 +94,7 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         ShouldBeAsTable(value, table);
     }
 
-    [Given(@"""(.*)""\.""(.*)"" имеет ""(.*)"", содержащий")]
+    // [Given(@"""(.*)""\.""(.*)"" имеет ""(.*)"", содержащий")]
     public void GivenИмеетСодержащий(string targetTypeName, string propertyPath, string valueTypeName, Table table) {
         var target = GetByTypeName(targetTypeName);
         var property = target.GetPropertyPath(propertyPath).Last();
@@ -117,7 +127,7 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
 
 
 
-    [Given(@"в ответ на ""(.*)"" c корреляцией по ""(.*)"" (.*) возвращает ""(.*)"" и ""(.*)"", содержащий")]
+    // [Given(@"в ответ на ""(.*)"" c корреляцией по ""(.*)"" (.*) возвращает ""(.*)"" и ""(.*)"", содержащий")]
     public void GivenHttpClientHandlerMockВОтветНаВозвращаетСодержащий(string requestTypeName, string correlationPropName, string correlationValue,  HttpStatusCode statusCode, string responseTypeName, Table table) {
         var requestType = GetTypeByName(requestTypeName);
         var mock = Get<HttpClientHandlerMock>();
@@ -129,7 +139,7 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         });
     }
 
-    [Given(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и ""(.*)"", содержащий")]
+    // [Given(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и ""(.*)"", содержащий")]
     public void GivenHttpClientHandlerMockВОтветНаВозвращаетСодержащий(string method, string url, HttpStatusCode statusCode, string responseTypeName, Table table) {
         var mock = Get<HttpClientHandlerMock>();
         mock.SetFutureAnswer(new() {
@@ -141,7 +151,7 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
     }
 
 
-    [Given(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и json")]
+    // [Given(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и json")]
     public void GivenВОтветНаRestЗапросВозвращаетсяИJson(string method, string url, HttpStatusCode statusCode, Table table) {
         var mock = Get<HttpClientHandlerMock>();
         mock.SetFutureAnswer(new() {
@@ -153,8 +163,8 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
     }
 
 
-    [Then(@"в ответ на ""(.*)"" c корреляцией по ""(.*)"" (.*) возвращает ""(.*)"" и ""(.*)"", содержащий")]
-    [When(@"в ответ на ""(.*)"" c корреляцией по ""(.*)"" (.*) возвращает ""(.*)"" и ""(.*)"", содержащий")]
+    // [Then(@"в ответ на ""(.*)"" c корреляцией по ""(.*)"" (.*) возвращает ""(.*)"" и ""(.*)"", содержащий")]
+    // [When(@"в ответ на ""(.*)"" c корреляцией по ""(.*)"" (.*) возвращает ""(.*)"" и ""(.*)"", содержащий")]
     public async Task ThenHttpClientHandlerMockВОтветНаВозвращаетСодержащий(string requestTypeName, string correlationPropName, string correlationValue,  HttpStatusCode statusCode, string responseTypeName, Table table) {
         var requestType = GetTypeByName(requestTypeName);
         var mock = Get<HttpClientHandlerMock>();
@@ -166,8 +176,8 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         });
     }
 
-    [Then(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и ""(.*)"", содержащий")]
-    [When(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и ""(.*)"", содержащий")]
+    // [Then(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и ""(.*)"", содержащий")]
+    // [When(@"в ответ на rest-запрос ""(.*)"" ""(.*)"" возвращается ""(.*)"" и ""(.*)"", содержащий")]
     public async Task ThenHttpClientHandlerMockВОтветНаВозвращаетСодержащий(string method, string url, HttpStatusCode statusCode, string responseTypeName, Table table) {
         var mock = Get<HttpClientHandlerMock>();
         await mock.Answer(new() {
@@ -178,7 +188,7 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         });
     }
 
-    [Then(@"rest-запрос ""(.*)"" ""(.*)"" имеет тип контента application/x-www-form-urlencoded и содержит следующие значения")]
+    // [Then(@"rest-запрос ""(.*)"" ""(.*)"" имеет тип контента application/x-www-form-urlencoded и содержит следующие значения")]
     public async Task ThenRestЗапросИмеетТипКонтентаApplicationXWwwFormUrlencodedИСодержитСледующиеЗначения(string method, string url, Table table) {
         var mock = Get<HttpClientHandlerMock>();
         var request = await mock.WaitRequest(x => x.Method.Method == method && x.RequestUri == new Uri(url), new CancellationTokenSource(Timeout).Token);
@@ -203,16 +213,17 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
     }
 
 
-    [When(@"возвращается ""(.*)"", содержащий")]
-    [Then(@"возвращается ""(.*)"", содержащий")]
-    public void ThenПолученУспешныйОтветСодержащий(string typeName, Table table) {
+    // [When(@"возвращается ""(.*)"", содержащий")]
+    // [Then(@"возвращается ""(.*)"", содержащий")]
+    [Then(@"""(.*)"" is returned containing")]
+    public void ThenIsReturnedContaining(string typeName, Table table) {
         var response = GetByTypeName(typeName);
         ShouldBeAsTable(response, table);
     }
 
 
-    [When(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)"", содержащим")]
-    [Then(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)"", содержащим")]
+    // [When(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)"", содержащим")]
+    // [Then(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)"", содержащим")]
     public async Task WhenУBackOfficePaymentApiClientЗапрашиваетсяМетодС(string targetTypeName, string methodName, string requestType, Table table) {
         var target = GetByTypeName(targetTypeName);
         var request = GetFromTable(requestType, table);
@@ -225,8 +236,66 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         Set(result);
     }
 
-    [When(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)""")]
-    [Then(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)""")]
+
+    [When(@"calling ""(.*)"" method with ""(.*)"" containing")]
+    [Then(@"calling ""(.*)"" method with ""(.*)"" containing")]
+    public async Task WhenCallMethodWithRequestContaining(string invocationTarget, string requestType, Table table) {
+        var (targetTypeName, methodName) = ParseInvocationTarget(invocationTarget);
+
+        var target = GetByTypeName(targetTypeName);
+        var request = GetFromTable(requestType, table);
+
+        var method = FindMethod(target.GetType(), request.GetType(), methodName);
+
+        var responseTask = Invoke(method, target, request);
+        await responseTask; //todo: use cancellation token
+        var result = (object) ((dynamic) responseTask).Result;
+
+        Set(result);
+
+        if (Context.PrintResponses() || Context.AttachResponses()) {
+            try {
+                var options = SerializerOptions != null
+                    ? new JsonSerializerOptions(SerializerOptions)
+                    : new(JsonSerializerDefaults.Web);
+
+                options.WriteIndented = true;
+                options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+                // options.IgnoreReadOnlyProperties = true;
+                options.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+
+
+                var json = await Task.Run(
+                    () => JsonSerializer.Serialize(result, options),
+                    new CancellationTokenSource(Timeout).Token
+                );
+
+                if (Context.PrintResponses())
+                    Output.WriteLine("{0} invocation returned {1}\n{2}", invocationTarget, result.GetTypeNestedName(), json);
+
+                if (Context.AttachResponses()) {
+                    var path = Path.ChangeExtension(Path.GetRandomFileName(), "json");
+                    await File.WriteAllTextAsync(path, json);
+                    Output.AddAttachment(path);
+                    Output.WriteLine("{0} invocation result ({1}) saved to file {2}", invocationTarget, result.GetTypeNestedName(), Path.GetFullPath(path));
+                }
+
+            }
+            catch (OperationCanceledException) {
+                // ignored
+            }
+        }
+
+        return;
+
+        static (string TargetTypeName, string MethodName) ParseInvocationTarget(string invokeTarget) {
+            var lastDot = invokeTarget.LastIndexOf('.');
+            return (invokeTarget[..lastDot], invokeTarget[(lastDot + 1)..]);
+        }
+    }
+
+    // [When(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)""")]
+    // [Then(@"у ""(.*)"" запрашивается метод ""(.*)"" с ""(.*)""")]
     public async Task WhenУЗапрашиваетсяМетодС(string targetTypeName, string methodName, string requestType) {
         var target = GetByTypeName(targetTypeName);
         var request = GetByTypeName(requestType);
@@ -239,5 +308,17 @@ public class CommonDccSteps : ContextScenario<TypeResolver> {
         Set(result);
     }
 
+
+    [Given(@"configuration")]
+    public void GivenConfiguration(Table table) {
+        var configuration = Get<IConfiguration>();
+
+        foreach (var row in table.Rows) {
+            var key = row[0];
+            var value = row[1];
+            configuration[key] = value;
+        }
+
+        Get<IConfigurationRoot>().Reload();
+    }
 }
-*/

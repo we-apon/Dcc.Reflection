@@ -3,6 +3,7 @@
     <RootNamespace>Dcc.Reflection.TypeFormatting</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="LinkDotNet.StringBuilder" Version="1.18.1" />
+    <PackageReference Include="CommunityToolkit.HighPerformance" Version="8.2.2" />
+    <PackageReference Include="LinkDotNet.StringBuilder" Version="1.18.6" />
   </ItemGroup>
 </Project>
